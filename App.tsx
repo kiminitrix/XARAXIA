@@ -43,6 +43,56 @@ const App: React.FC = () => {
     if (currentChatId === id) setCurrentChatId(null);
   };
 
+  const handleRegenerate = async (messageId: string) => {
+    if (isStreaming || !currentChatId || !currentChat) return;
+
+    const assistantIdx = currentChat.messages.findIndex(m => m.id === messageId);
+    if (assistantIdx === -1) return;
+
+    // Find the user message that preceded this assistant message
+    const userMessageIdx = assistantIdx - 1;
+    if (userMessageIdx < 0 || currentChat.messages[userMessageIdx].role !== Role.USER) return;
+
+    const messagesToResend = currentChat.messages.slice(0, assistantIdx);
+    
+    // Reset assistant message content
+    setConversations(prev => prev.map(c => {
+      if (c.id !== currentChatId) return c;
+      const msgs = [...c.messages];
+      msgs[assistantIdx] = { ...msgs[assistantIdx], content: "", timestamp: Date.now() };
+      return { ...c, messages: msgs };
+    }));
+
+    setIsStreaming(true);
+
+    try {
+      let accumulatedText = "";
+      await streamChat(
+        currentChat.modelId,
+        messagesToResend,
+        currentChat.systemPrompt || systemPrompt,
+        (chunk) => {
+          accumulatedText += chunk;
+          setConversations(prev => prev.map(c => {
+            if (c.id !== currentChatId) return c;
+            const msgs = [...c.messages];
+            msgs[assistantIdx] = { ...msgs[assistantIdx], content: accumulatedText };
+            return { ...c, messages: msgs };
+          }));
+        }
+      );
+    } catch (error) {
+      setConversations(prev => prev.map(c => {
+        if (c.id !== currentChatId) return c;
+        const msgs = [...c.messages];
+        msgs[assistantIdx] = { ...msgs[assistantIdx], content: "Sorry, I encountered an error while regenerating. Please try again." };
+        return { ...c, messages: msgs };
+      }));
+    } finally {
+      setIsStreaming(false);
+    }
+  };
+
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isStreaming) return;
 
@@ -155,6 +205,7 @@ const App: React.FC = () => {
         <ChatWindow 
           conversation={currentChat}
           onSendMessage={handleSendMessage}
+          onRegenerate={handleRegenerate}
           isStreaming={isStreaming}
           activeModel={activeModel}
           onModelChange={setActiveModel}

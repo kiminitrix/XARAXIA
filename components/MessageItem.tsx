@@ -1,13 +1,16 @@
+
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Message, Role } from '../types';
-import { User, Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { User, Copy, Check, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react';
 
 interface MessageItemProps {
   message: Message;
+  onRegenerate?: (id: string) => void;
+  isStreaming?: boolean;
 }
 
 const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
@@ -61,9 +64,10 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
   );
 };
 
-const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ message, onRegenerate, isStreaming }) => {
   const isUser = message.role === Role.USER;
   const [mainCopied, setMainCopied] = useState(false);
+  const [isRotating, setIsRotating] = useState(false);
 
   const handleMainCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -71,25 +75,34 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
     setTimeout(() => setMainCopied(false), 2000);
   };
 
+  const handleRegenerateClick = () => {
+    if (isStreaming || !onRegenerate) return;
+    setIsRotating(true);
+    onRegenerate(message.id);
+    setTimeout(() => setIsRotating(false), 1000);
+  };
+
   return (
-    <div className={`flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} group/message`}>
+    <div className={`flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} group/message relative`}>
+      {/* Avatar */}
       <div className={`
-        w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300
+        w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all duration-300
         ${isUser 
           ? 'bg-blue-600 text-white' 
-          : 'bg-blue-600 text-white shadow-blue-500/20'}
+          : 'bg-slate-800 dark:bg-slate-700 text-blue-400 shadow-blue-500/10'}
       `}>
-        {isUser ? <User size={20} /> : <span className="font-black text-lg">X</span>}
+        {isUser ? <User size={20} /> : <span className="font-black text-lg tracking-tighter">XA</span>}
       </div>
 
       <div className={`flex flex-col max-w-[85%] ${isUser ? 'items-end' : 'items-start'}`}>
+        {/* Bubble */}
         <div className={`
-          px-4 py-3 rounded-2xl shadow-sm leading-relaxed
+          relative px-4 py-3 rounded-2xl shadow-sm leading-relaxed transition-all duration-200
           ${isUser 
             ? 'bg-blue-600 text-white rounded-tr-none' 
-            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-none'}
+            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-none group-hover/message:border-blue-400/50 dark:group-hover/message:border-blue-500/30'}
         `}>
-          <div className="prose-custom prose-slate dark:prose-invert max-w-none">
+          <div className="prose-custom prose-slate dark:prose-invert max-w-none min-w-[20px]">
             {message.content ? (
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
@@ -112,19 +125,41 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
           </div>
         </div>
 
+        {/* Action Bar */}
         {!isUser && message.content && (
-          <div className="flex items-center gap-1 mt-2 opacity-0 group-hover/message:opacity-100 transition-opacity duration-200">
+          <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover/message:opacity-100 transition-all duration-200 -ml-1">
             <button 
               onClick={handleMainCopy}
-              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-600 transition-colors"
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               title="Copy response"
             >
               {mainCopied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
             </button>
-            <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-600 transition-colors">
+            
+            <button 
+              onClick={handleRegenerateClick}
+              disabled={isStreaming}
+              className={`
+                group/reg p-1.5 flex items-center gap-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all
+                ${isStreaming ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
+              title="Regenerate response"
+            >
+              <RotateCcw 
+                size={14} 
+                className={`transition-transform duration-500 ${isRotating ? 'rotate-180' : ''}`} 
+              />
+              <span className="text-[10px] font-bold uppercase tracking-wider hidden group-hover/reg:block animate-in fade-in slide-in-from-left-1">
+                Regenerate
+              </span>
+            </button>
+
+            <div className="w-px h-3 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+            <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
               <ThumbsUp size={14} />
             </button>
-            <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-600 transition-colors">
+            <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
               <ThumbsDown size={14} />
             </button>
           </div>

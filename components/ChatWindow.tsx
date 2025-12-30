@@ -9,6 +9,7 @@ import { Settings, Sparkles, Sidebar as SidebarIcon } from 'lucide-react';
 interface ChatWindowProps {
   conversation?: Conversation;
   onSendMessage: (text: string) => void;
+  onRegenerate: (messageId: string) => void;
   isStreaming: boolean;
   activeModel: Model;
   onModelChange: (model: Model) => void;
@@ -21,6 +22,7 @@ interface ChatWindowProps {
 const ChatWindow: React.FC<ChatWindowProps> = ({
   conversation,
   onSendMessage,
+  onRegenerate,
   isStreaming,
   activeModel,
   onModelChange,
@@ -117,7 +119,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         ) : (
           <div className="max-w-4xl mx-auto w-full space-y-8">
             {conversation.messages.map((message) => (
-              <MessageItem key={message.id} message={message} />
+              <MessageItem key={message.id} message={message} onRegenerate={onRegenerate} isStreaming={isStreaming} />
             ))}
             {isStreaming && (
               <div className="flex items-center gap-2 text-slate-400 text-sm animate-pulse ml-12">
