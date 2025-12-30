@@ -1,5 +1,5 @@
 {
-  "name": "XARAXIA",
+  "name": "XARAXIA - Advanced Gemini-Powered Chatbot",
   "description": "A production-ready, feature-rich AI chatbot built with React and the Gemini API, featuring streaming responses, persistent conversation memory, and a modern UI.",
   "requestFramePermissions": [
     "microphone"
