@@ -39,7 +39,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.interimResults = false; // Only take final chunks for stability
     recognition.lang = 'en-US';
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -53,8 +53,9 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
 
       if (finalTranscript) {
         setText(prev => {
-          const space = prev.length > 0 && !prev.endsWith(' ') ? ' ' : '';
-          return prev + space + finalTranscript.trim();
+          const trimmed = prev.trimEnd();
+          const space = trimmed.length > 0 ? ' ' : '';
+          return trimmed + space + finalTranscript.trim();
         });
       }
     };
@@ -72,6 +73,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
 
     recognition.onend = () => {
       setIsListening(false);
+      // Auto-focus textarea when done speaking
+      textareaRef.current?.focus();
     };
 
     recognitionRef.current = recognition;
@@ -111,7 +114,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
       setFiles(prev => [...prev, ...newFiles]);
-      // Reset input so same file can be selected again
       e.target.value = '';
     }
   };
@@ -127,12 +129,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
         recognitionRef.current?.stop();
       }
       
-      // Note: File handling is currently a placeholder. 
-      // In a real implementation, we would upload these or send as base64 parts.
-      if (files.length > 0) {
-        console.log('Sending files (placeholder):', files.map(f => f.name));
-      }
-
       onSend(text.trim());
       setText('');
       setFiles([]);
@@ -157,43 +153,52 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
 
   return (
     <div className="relative w-full">
-      {/* Listening Aura */}
+      {/* Visual Indicator of Listening State */}
       {isListening && (
-        <div className="absolute inset-0 -m-1 bg-blue-500/10 dark:bg-blue-400/5 rounded-2xl animate-pulse pointer-events-none z-0" />
+        <div className="absolute inset-0 -m-1.5 bg-blue-500/10 dark:bg-blue-400/10 rounded-2xl animate-pulse pointer-events-none z-0 ring-2 ring-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.2)]" />
       )}
 
-      {/* Floating Status / Error */}
+      {/* Floating Permission Error */}
       {permissionError && (
-        <div className="absolute -top-12 left-0 right-0 flex justify-center animate-in slide-in-from-bottom-2 duration-200">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-medium rounded-lg border border-red-100 dark:border-red-800 shadow-sm">
-            <AlertCircle size={14} />
+        <div className="absolute -top-14 left-0 right-0 flex justify-center animate-in slide-in-from-bottom-2 duration-300 z-20">
+          <div className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl border border-red-100 dark:border-red-800 shadow-xl backdrop-blur-sm">
+            <AlertCircle size={16} />
             {permissionError}
-            <button onClick={() => setPermissionError(null)} className="ml-1 hover:underline">Dismiss</button>
+            <button 
+              onClick={() => setPermissionError(null)}
+              className="ml-2 p-1 hover:bg-red-100 dark:hover:bg-red-800 rounded-full transition-colors"
+            >
+              <X size={14} />
+            </button>
           </div>
         </div>
       )}
 
+      {/* "Listening" Badge */}
       {isListening && !permissionError && (
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-600 text-white text-[10px] font-bold rounded-full animate-bounce shadow-lg flex items-center gap-2 z-10 uppercase tracking-tighter">
-          <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
-          Listening...
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-blue-600 text-white text-[10px] font-black rounded-full shadow-2xl flex items-center gap-2 z-20 uppercase tracking-[0.1em] border-2 border-white/20 animate-bounce">
+          <div className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+          </div>
+          Listening Live
         </div>
       )}
 
       {/* File Previews */}
       {files.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2 px-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
+        <div className="flex flex-wrap gap-2 mb-3 px-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
           {files.map((file, idx) => (
             <div 
               key={`${file.name}-${idx}`}
-              className="group flex items-center gap-2 px-2 py-1 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-[11px] text-slate-700 dark:text-slate-200 shadow-sm"
+              className="group flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700/80 border border-slate-200 dark:border-slate-600 rounded-xl text-[11px] text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md transition-all"
             >
               <span className="text-blue-500">{getFileIcon(file)}</span>
-              <span className="max-w-[120px] truncate font-medium">{file.name}</span>
+              <span className="max-w-[150px] truncate font-semibold">{file.name}</span>
               <button 
                 type="button"
                 onClick={() => removeFile(idx)}
-                className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-full transition-colors"
+                className="p-1 hover:bg-red-100 dark:hover:bg-red-900/40 hover:text-red-600 dark:hover:text-red-400 rounded-full transition-colors"
               >
                 <X size={12} />
               </button>
@@ -221,8 +226,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
         <button 
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-all shrink-0"
-          title="Attach file"
+          className="p-2.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-all shrink-0"
+          title="Attach files"
         >
           <Paperclip size={20} />
         </button>
@@ -233,19 +238,19 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isListening ? "I'm listening..." : "Ask me anything..."}
+          placeholder={isListening ? "Listening to your voice..." : "Ask XARAXIA anything..."}
           disabled={disabled}
-          className="flex-1 max-h-48 py-2 px-1 bg-transparent border-none focus:ring-0 outline-none resize-none text-slate-800 dark:text-slate-100 disabled:opacity-50 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          className="flex-1 max-h-48 py-2.5 px-1 bg-transparent border-none focus:ring-0 outline-none resize-none text-slate-800 dark:text-slate-100 disabled:opacity-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium"
         />
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 pb-0.5">
           {isSupported && (
             <button 
               type="button"
               onClick={toggleListening}
               disabled={disabled}
               className={`
-                p-2 rounded-xl transition-all relative group
+                p-2.5 rounded-xl transition-all relative group
                 ${isListening 
                   ? 'text-white bg-blue-600 shadow-lg scale-110 active:scale-95' 
                   : 'text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700/50'}
@@ -263,7 +268,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
             type="submit"
             disabled={(!text.trim() && files.length === 0) || disabled}
             className={`
-              p-2 rounded-xl transition-all
+              p-2.5 rounded-xl transition-all
               ${(text.trim() || files.length > 0) && !disabled 
                 ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700 transform active:scale-95' 
                 : 'bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}
