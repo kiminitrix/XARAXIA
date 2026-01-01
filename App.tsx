@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Conversation, Message, Role, Model } from './types';
+import { Conversation, Message, Role, Model, Attachment } from './types';
 import { GEMINI_MODELS, DEFAULT_SYSTEM_PROMPT } from './constants';
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
@@ -20,7 +21,6 @@ const App: React.FC = () => {
 
   const currentChat = conversations.find(c => c.id === currentChatId);
 
-  // Sync with localStorage
   useEffect(() => {
     localStorage.setItem('xaraxia_conversations', JSON.stringify(conversations));
   }, [conversations]);
@@ -49,13 +49,8 @@ const App: React.FC = () => {
     const assistantIdx = currentChat.messages.findIndex(m => m.id === messageId);
     if (assistantIdx === -1) return;
 
-    // Find the user message that preceded this assistant message
-    const userMessageIdx = assistantIdx - 1;
-    if (userMessageIdx < 0 || currentChat.messages[userMessageIdx].role !== Role.USER) return;
-
     const messagesToResend = currentChat.messages.slice(0, assistantIdx);
     
-    // Reset assistant message content
     setConversations(prev => prev.map(c => {
       if (c.id !== currentChatId) return c;
       const msgs = [...c.messages];
@@ -85,7 +80,7 @@ const App: React.FC = () => {
       setConversations(prev => prev.map(c => {
         if (c.id !== currentChatId) return c;
         const msgs = [...c.messages];
-        msgs[assistantIdx] = { ...msgs[assistantIdx], content: "Sorry, I encountered an error while regenerating. Please try again." };
+        msgs[assistantIdx] = { ...msgs[assistantIdx], content: "Error during regeneration." };
         return { ...c, messages: msgs };
       }));
     } finally {
@@ -93,13 +88,13 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSendMessage = async (text: string) => {
-    if (!text.trim() || isStreaming) return;
+  const handleSendMessage = async (text: string, attachments: Attachment[] = []) => {
+    if (!text.trim() && attachments.length === 0) return;
+    if (isStreaming) return;
 
     let chatId = currentChatId;
     let targetChat = currentChat;
 
-    // Create new chat if none selected
     if (!chatId) {
       const newId = uuidv4();
       const newChat: Conversation = {
@@ -122,25 +117,23 @@ const App: React.FC = () => {
       id: uuidv4(),
       role: Role.USER,
       content: text,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      attachments: attachments.length > 0 ? attachments : undefined
     };
 
-    // Update conversation with user message
     const updatedMessages = [...targetChat.messages, userMessage];
     setConversations(prev => prev.map(c => 
       c.id === chatId ? { ...c, messages: updatedMessages, lastUpdated: Date.now() } : c
     ));
 
-    // Handle Title Generation if it's the first message
     if (updatedMessages.length === 1) {
-      generateTitle(text).then(title => {
+      generateTitle(text || "File Analysis").then(title => {
         setConversations(prev => prev.map(c => 
           c.id === chatId ? { ...c, title } : c
         ));
       });
     }
 
-    // AI Response Placeholder
     const assistantMessageId = uuidv4();
     const assistantMessage: Message = {
       id: assistantMessageId,
@@ -180,7 +173,7 @@ const App: React.FC = () => {
         const msgs = [...c.messages];
         const lastMsg = msgs[msgs.length - 1];
         if (lastMsg && lastMsg.id === assistantMessageId) {
-          lastMsg.content = "Sorry, I encountered an error while processing your request. Please try again.";
+          lastMsg.content = "Error processing request.";
         }
         return { ...c, messages: msgs };
       }));

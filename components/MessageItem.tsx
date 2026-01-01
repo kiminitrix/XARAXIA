@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Message, Role } from '../types';
-import { User, Copy, Check, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react';
+import { User, Copy, Check, ThumbsUp, ThumbsDown, RotateCcw, File, FileText, Image as ImageIcon, Download } from 'lucide-react';
 
 interface MessageItemProps {
   message: Message;
@@ -82,6 +82,11 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onRegenerate, isStre
     setTimeout(() => setIsRotating(false), 1000);
   };
 
+  const getFileIcon = (type: string) => {
+    if (type.includes('pdf')) return <FileText size={18} className="text-red-500" />;
+    return <File size={18} className="text-blue-500" />;
+  };
+
   return (
     <div className={`flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} group/message relative`}>
       {/* Avatar */}
@@ -95,6 +100,26 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onRegenerate, isStre
       </div>
 
       <div className={`flex flex-col max-w-[85%] ${isUser ? 'items-end' : 'items-start'}`}>
+        {/* Attachments (If User) */}
+        {isUser && message.attachments && message.attachments.length > 0 && (
+          <div className="flex flex-wrap justify-end gap-2 mb-2">
+            {message.attachments.map((file, i) => (
+              <div key={i} className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 flex items-center gap-2 max-w-[200px] shadow-sm">
+                 {file.type.startsWith('image/') ? (
+                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
+                      <img src={`data:${file.type};base64,${file.data}`} alt="preview" className="w-full h-full object-cover" />
+                    </div>
+                 ) : (
+                    <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0">
+                      {getFileIcon(file.type)}
+                    </div>
+                 )}
+                 <span className="text-[10px] font-medium truncate">{file.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Bubble */}
         <div className={`
           relative px-4 py-3 rounded-2xl shadow-sm leading-relaxed transition-all duration-200

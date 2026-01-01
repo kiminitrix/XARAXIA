@@ -5,12 +5,20 @@ export enum Role {
   SYSTEM = 'system'
 }
 
+export interface Attachment {
+  name: string;
+  type: string;
+  data: string; // Base64 encoded string
+  size: number;
+}
+
 export interface Message {
   id: string;
   role: Role;
   content: string;
   timestamp: number;
   tokens?: number;
+  attachments?: Attachment[];
 }
 
 export interface Conversation {

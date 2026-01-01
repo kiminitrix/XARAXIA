@@ -2,8 +2,6 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { Message, Role } from "../types";
 
-// In a real production app, you might proxy this through a backend.
-// Here we follow the provided SDK guidelines for direct interaction.
 const getClient = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
@@ -21,20 +19,31 @@ export const streamChat = async (
   const ai = getClient();
   
   // Format messages for Gemini API
-  const history = messages.slice(0, -1).map(m => ({
-    role: m.role === Role.USER ? 'user' : 'model',
-    parts: [{ text: m.content }]
-  }));
+  const formattedContents = messages.map(m => {
+    const parts: any[] = [{ text: m.content || " " }];
+    
+    // Add attachments if present
+    if (m.attachments && m.attachments.length > 0) {
+      m.attachments.forEach(attachment => {
+        parts.push({
+          inlineData: {
+            mimeType: attachment.type,
+            data: attachment.data
+          }
+        });
+      });
+    }
 
-  const lastMessage = messages[messages.length - 1].content;
+    return {
+      role: m.role === Role.USER ? 'user' : 'model',
+      parts
+    };
+  });
 
   try {
     const streamResponse = await ai.models.generateContentStream({
       model: modelId,
-      contents: [
-        ...history,
-        { role: 'user', parts: [{ text: lastMessage }] }
-      ],
+      contents: formattedContents,
       config: {
         systemInstruction: systemPrompt,
         temperature: 0.7,
