@@ -42,8 +42,17 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
           onClick={handleCopy}
           className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
         >
-          {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? (
+            <div className="flex items-center gap-1 text-green-500 animate-in fade-in duration-200">
+              <Check size={14} />
+              <span>Copied</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <Copy size={14} />
+              <span>Copy</span>
+            </div>
+          )}
         </button>
       </div>
       <SyntaxHighlighter
@@ -151,42 +160,53 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onRegenerate, isStre
         </div>
 
         {/* Action Bar */}
-        {!isUser && message.content && (
-          <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover/message:opacity-100 transition-all duration-200 -ml-1">
+        {message.content && (
+          <div className={`flex items-center gap-1 mt-1.5 opacity-0 group-hover/message:opacity-100 transition-all duration-200 ${isUser ? '-mr-1 justify-end' : '-ml-1'}`}>
             <button 
               onClick={handleMainCopy}
-              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-              title="Copy response"
+              className="p-1.5 flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              title="Copy message"
             >
-              {mainCopied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+              {mainCopied ? (
+                <>
+                  <Check size={14} className="text-green-500" />
+                  <span className="text-[10px] font-bold text-green-500 animate-in fade-in slide-in-from-left-1">Copied!</span>
+                </>
+              ) : (
+                <Copy size={14} />
+              )}
             </button>
             
-            <button 
-              onClick={handleRegenerateClick}
-              disabled={isStreaming}
-              className={`
-                group/reg p-1.5 flex items-center gap-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all
-                ${isStreaming ? 'opacity-50 cursor-not-allowed' : ''}
-              `}
-              title="Regenerate response"
-            >
-              <RotateCcw 
-                size={14} 
-                className={`transition-transform duration-500 ${isRotating ? 'rotate-180' : ''}`} 
-              />
-              <span className="text-[10px] font-bold uppercase tracking-wider hidden group-hover/reg:block animate-in fade-in slide-in-from-left-1">
-                Regenerate
-              </span>
-            </button>
+            {!isUser && (
+              <>
+                <button 
+                  onClick={handleRegenerateClick}
+                  disabled={isStreaming}
+                  className={`
+                    group/reg p-1.5 flex items-center gap-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all
+                    ${isStreaming ? 'opacity-50 cursor-not-allowed' : ''}
+                  `}
+                  title="Regenerate response"
+                >
+                  <RotateCcw 
+                    size={14} 
+                    className={`transition-transform duration-500 ${isRotating ? 'rotate-180' : ''}`} 
+                  />
+                  <span className="text-[10px] font-bold uppercase tracking-wider hidden group-hover/reg:block animate-in fade-in slide-in-from-left-1">
+                    Regenerate
+                  </span>
+                </button>
 
-            <div className="w-px h-3 bg-slate-200 dark:bg-slate-700 mx-1" />
+                <div className="w-px h-3 bg-slate-200 dark:bg-slate-700 mx-1" />
 
-            <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-              <ThumbsUp size={14} />
-            </button>
-            <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-              <ThumbsDown size={14} />
-            </button>
+                <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                  <ThumbsUp size={14} />
+                </button>
+                <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                  <ThumbsDown size={14} />
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
